@@ -1,11 +1,13 @@
 package una.ac.cr.backend.entities;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+
 import javax.persistence.*;
 import java.math.BigInteger;
 
 @Entity
 @Table(name = "matricula")
-public class Matricula {
+public class Matricula extends CommonEntity{
     @Id
     @GeneratedValue(strategy= GenerationType.IDENTITY)
     @Column(name= "id_matricula")
@@ -13,10 +15,12 @@ public class Matricula {
 
     @ManyToOne(targetEntity = Persona.class)
     @JoinColumn(name = "persona_id", referencedColumnName = "id_persona")
+    @JsonIgnoreProperties({"matriculas"})
     private Persona persona;
 
     @ManyToOne(targetEntity = Materia.class)
     @JoinColumn(name = "materia_id", referencedColumnName = "id_materia")
+    @JsonIgnoreProperties({"matriculas"})
     private Materia materia;
 
 
@@ -44,13 +48,10 @@ public class Matricula {
         this.materia = materia;
     }
 
-
     @Override
-    public String toString() {
-        return "Matricula{" +
-                "id=" + id +
-                ", persona=" + persona +
-                ", materia=" + materia +
-                '}';
+    protected boolean makeComparison(CommonEntity entity) {
+        Matricula newMatricula = (Matricula) entity;
+        return this.materia.getId().equals(newMatricula.materia.getId()) &&
+                this.persona.getId().equals(newMatricula.persona.getId());
     }
 }

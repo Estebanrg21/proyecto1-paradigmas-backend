@@ -1,5 +1,6 @@
 package una.ac.cr.backend.entities;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import javax.persistence.*;
 import java.math.BigInteger;
 import java.util.List;
@@ -17,6 +18,7 @@ public class Materia {
 
     @ManyToOne(targetEntity = Periodo.class)
     @JoinColumn(name = "periodo_id", referencedColumnName = "id_periodo")
+    @JsonIgnoreProperties({"materias"})
     private Periodo periodo;
 
     @OneToMany(targetEntity = Matricula.class, mappedBy = "materia")
@@ -55,13 +57,7 @@ public class Materia {
         this.cupos = cupos;
     }
 
-    @Override
-    public String toString() {
-        return "Materia{" +
-                "id=" + id +
-                ", descripcion='" + descripcion + '\'' +
-                ", periodo=" + periodo +
-                ", cupos=" + cupos +
-                '}';
+    public List<Matricula> getMatriculas() {
+        return matriculas;
     }
 }

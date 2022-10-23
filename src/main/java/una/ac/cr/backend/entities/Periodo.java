@@ -32,6 +32,14 @@ public class Periodo {
         this.descripcion = descripcion;
     }
 
+    public List<Materia> getMaterias() {
+        return materias;
+    }
+
+    public void setMaterias(List<Materia> materias) {
+        this.materias = materias;
+    }
+
     @Override
     public String toString() {
         return "Periodo{" +

@@ -41,4 +41,12 @@ public class Persona{
     public void setNombre(String nombre) {
         this.nombre = nombre;
     }
+
+    public List<Matricula> getMatriculas() {
+        return matriculas;
+    }
+
+    public void setMatriculas(List<Matricula> matriculas) {
+        this.matriculas = matriculas;
+    }
 }

@@ -4,21 +4,31 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
-import org.springframework.orm.jpa.JpaSystemException;
 import org.springframework.web.bind.annotation.*;
-import una.ac.cr.backend.businessExceptions.BusinessSQLException;
+import una.ac.cr.backend.entities.Materia;
 import una.ac.cr.backend.entities.Matricula;
+import una.ac.cr.backend.repositories.MateriaRepository;
 import una.ac.cr.backend.repositories.MatriculaRepository;
 
 import java.math.BigInteger;
 import java.util.*;
 
+import static una.ac.cr.backend.Util.jsonErrorResponse;
+
 @RestController
 @RequestMapping("/matricula")
 public class MatriculaRest {
+    private static final ResponseEntity<Object> commonResponseOnNotFound =
+            ResponseEntity.badRequest().contentType(MediaType.APPLICATION_JSON).body(jsonErrorResponse(
+                    "No existe la matrícula indicada",
+                    HttpStatus.BAD_REQUEST.value()
+            ));
 
     @Autowired
     private MatriculaRepository matriculaRepository;
+
+    @Autowired
+    private MateriaRepository materiaRepository;
 
     @GetMapping
     @CrossOrigin(origins = "*", maxAge = 3600)
@@ -31,50 +41,105 @@ public class MatriculaRest {
 
     @GetMapping("{id}")
     @CrossOrigin(origins = "*", maxAge = 3600)
-    public ResponseEntity<Matricula> findById(@PathVariable BigInteger id) {
+    public ResponseEntity<Object> findById(@PathVariable BigInteger id) {
         Optional<Matricula> matricula = matriculaRepository.findById(id);
         if (!matricula.isPresent()) {
-            ResponseEntity.badRequest().build();
+            return commonResponseOnNotFound;
         }
         return ResponseEntity.ok(matricula.get());
     }
 
     @PostMapping
     @CrossOrigin(origins = "*", maxAge = 3600)
-    public ResponseEntity<Matricula> create(@RequestBody Matricula matricula) {
-        return ResponseEntity.ok(matriculaRepository.save(matricula));
+    public ResponseEntity<Object> create(@RequestBody Matricula matricula) {
+        return resolveMatriculaResponse(matricula, getMatriculaReady(matricula));
     }
 
     @PutMapping
     @CrossOrigin(origins = "*", maxAge = 3600)
-    public ResponseEntity<Matricula> update(@RequestBody Matricula matricula){
-        if (!matriculaRepository.findById(matricula.getId()).isPresent()) {
-            ResponseEntity.badRequest().build();
+    public ResponseEntity<Object> update(@RequestBody Matricula matricula) {
+        Optional<Matricula> oldMatriculaOptional = matriculaRepository.findById(matricula.getId());
+        if (!oldMatriculaOptional.isPresent()) {
+            return commonResponseOnNotFound;
         }
-        return ResponseEntity.ok(matriculaRepository.save(matricula));
+        if (oldMatriculaOptional.get().areAttributesTheSame(matricula)) {
+            return ResponseEntity.accepted().body(matricula);
+        }
+        Object[] matriculateReadiness = getMatriculaReady(oldMatriculaOptional.get(),matricula);
+        if (matriculateReadiness[1] != null) {
+            Matricula oldMatricula = oldMatriculaOptional.get();
+            try {
+                Materia oldMateria = oldMatricula.getMateria();
+                oldMateria.setCupos(oldMateria.getCupos() + 1);
+                materiaRepository.save(oldMateria);
+            } catch (Exception e) {
+                matriculateReadiness[0] = "No fue posible actualizar";
+                matriculateReadiness[2] = HttpStatus.INTERNAL_SERVER_ERROR.value();
+            }
+
+        }
+        return resolveMatriculaResponse(matricula, matriculateReadiness);
     }
 
     @DeleteMapping("{id}")
     @CrossOrigin(origins = "*", maxAge = 3600)
     public ResponseEntity delete(@PathVariable BigInteger id) {
-        if (!matriculaRepository.findById(id).isPresent()) {
-            ResponseEntity.badRequest().build();
+        Optional<Matricula> matriculaOptional = matriculaRepository.findById(id);
+        if (!matriculaOptional.isPresent()) {
+            return commonResponseOnNotFound;
         }
-        matriculaRepository.delete(matriculaRepository.findById(id).get());
-        return ResponseEntity.ok().build();
+        return resolveMatriculaResponse(matriculaOptional.get(),
+                getMatriculaReady(matriculaOptional.get(), true), true);
     }
 
-    @ExceptionHandler(JpaSystemException.class)
-    public ResponseEntity<Object> handleException(JpaSystemException e) {
-        if (BusinessSQLException.isBusinessSQLError(e)){
-            String json = "{"+
-                    "\"error\":"+"\""+BusinessSQLException.getCauseMessage(e)+"\"" + "," +
-                    "\"status\""+HttpStatus.BAD_REQUEST.value() +
-                    "}";
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
-                    .contentType(MediaType.APPLICATION_JSON)
-                    .body(json);
+    private ResponseEntity<Object> resolveMatriculaResponse(Matricula matricula, Object[] resultMatricula) {
+        return resolveMatriculaResponse(matricula, resultMatricula, false);
+    }
+
+    private ResponseEntity<Object> resolveMatriculaResponse(Matricula matricula, Object[] resultMatricula,
+                                                            boolean isDeletion) {
+        Materia materia = (Materia) resultMatricula[1];
+        String msg = (String) resultMatricula[0];
+        Integer status = (Integer) resultMatricula[2];
+        if (materia != null) {
+            try {
+                materiaRepository.save(materiaRepository.save(materia));
+                if (isDeletion) {
+                    matriculaRepository.delete(matricula);
+                    return ResponseEntity.ok().build();
+                } else {
+                    return ResponseEntity.ok(matriculaRepository.save(matricula));
+                }
+            } catch (Exception e) {
+                msg = "No se pudo procesar la matrícula";
+                status = HttpStatus.INTERNAL_SERVER_ERROR.value();
+            }
         }
-        throw e;
+        return ResponseEntity.status(status).contentType(MediaType.APPLICATION_JSON)
+                .body(jsonErrorResponse(msg, status));
+    }
+
+    private Object[] getMatriculaReady(Matricula matricula) {
+        return getMatriculaReady(matricula, false);
+    }
+
+    private Object[] getMatriculaReady(Matricula oldMatricula, Matricula newMatricula) {
+        return (oldMatricula.getMateria().getId().equals(newMatricula.getMateria().getId())) ?
+                new Object[]{"", oldMatricula.getMateria(), HttpStatus.OK.value()} :
+                getMatriculaReady(newMatricula, false);
+    }
+
+    private Object[] getMatriculaReady(Matricula matricula, boolean isDeletion) {
+        Optional<Materia> materiaOptional = materiaRepository.findById(matricula.getMateria().getId());
+        if (materiaOptional.isPresent()) {
+            Materia materia = materiaOptional.get();
+            if (!(materia.getCupos() > 0) && !isDeletion) {
+                return new Object[]{"Límite de cupos alcanzado", null, HttpStatus.BAD_REQUEST.value()};
+            } else {
+                materia.setCupos(materia.getCupos() + ((isDeletion) ? 1 : -1));
+                return new Object[]{"", materia, HttpStatus.OK.value()};
+            }
+        }
+        return new Object[]{"No se puede procesar la matrícula", null, HttpStatus.INTERNAL_SERVER_ERROR.value()};
     }
 }
