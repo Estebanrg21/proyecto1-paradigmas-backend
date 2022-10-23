@@ -7,5 +7,4 @@ import java.math.BigInteger;
 import java.util.Optional;
 
 public interface PersonaRepository extends CrudRepository<Persona, BigInteger> {
-    Optional<Persona> findByIdentificacion(String identificacion);
 }

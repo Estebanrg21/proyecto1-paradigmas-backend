@@ -40,10 +40,10 @@ public class PersonaRest {
     }
 
 
-    @GetMapping("{identificacion}")
+    @GetMapping("{id}")
     @CrossOrigin(origins = "*", maxAge = 3600)
-    public ResponseEntity<Object> findById(@PathVariable String identificacion) {
-        Optional<Persona> persona = personaRepository.findByIdentificacion(identificacion);
+    public ResponseEntity<Object> findById(@PathVariable BigInteger id) {
+        Optional<Persona> persona = personaRepository.findById(id);
         if (!persona.isPresent()) {
             return commonResponseOnNotFound;
         }

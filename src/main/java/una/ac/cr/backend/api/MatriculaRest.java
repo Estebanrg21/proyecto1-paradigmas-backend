@@ -7,8 +7,10 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import una.ac.cr.backend.entities.Materia;
 import una.ac.cr.backend.entities.Matricula;
+import una.ac.cr.backend.entities.Persona;
 import una.ac.cr.backend.repositories.MateriaRepository;
 import una.ac.cr.backend.repositories.MatriculaRepository;
+import una.ac.cr.backend.repositories.PersonaRepository;
 
 import java.math.BigInteger;
 import java.util.*;
@@ -29,6 +31,9 @@ public class MatriculaRest {
 
     @Autowired
     private MateriaRepository materiaRepository;
+
+    @Autowired
+    private PersonaRepository personaRepository;
 
     @GetMapping
     @CrossOrigin(origins = "*", maxAge = 3600)
@@ -111,7 +116,7 @@ public class MatriculaRest {
                     return ResponseEntity.ok(matriculaRepository.save(matricula));
                 }
             } catch (Exception e) {
-                msg = "No se pudo procesar la matrícula";
+                msg = "Hubo un error en la interacción con la base de datos";
                 status = HttpStatus.INTERNAL_SERVER_ERROR.value();
             }
         }
@@ -131,7 +136,8 @@ public class MatriculaRest {
 
     private Object[] getMatriculaReady(Matricula matricula, boolean isDeletion) {
         Optional<Materia> materiaOptional = materiaRepository.findById(matricula.getMateria().getId());
-        if (materiaOptional.isPresent()) {
+        Optional<Persona> personaOptional = personaRepository.findById(matricula.getPersona().getId());
+        if (materiaOptional.isPresent() && personaOptional.isPresent()) {
             Materia materia = materiaOptional.get();
             if (!(materia.getCupos() > 0) && !isDeletion) {
                 return new Object[]{"Límite de cupos alcanzado", null, HttpStatus.BAD_REQUEST.value()};
@@ -140,6 +146,6 @@ public class MatriculaRest {
                 return new Object[]{"", materia, HttpStatus.OK.value()};
             }
         }
-        return new Object[]{"No se puede procesar la matrícula", null, HttpStatus.INTERNAL_SERVER_ERROR.value()};
+        return new Object[]{"Datos no válidos", null, HttpStatus.BAD_REQUEST.value()};
     }
 }
