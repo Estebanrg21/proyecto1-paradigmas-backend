@@ -22,6 +22,10 @@ public class Log {
         this.entidad = entidad;
     }
 
+    public Log() {
+        
+    }
+
     public BigInteger getId() {
         return id;
     }
