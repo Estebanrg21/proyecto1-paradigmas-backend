@@ -5,7 +5,10 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import una.ac.cr.backend.entities.Materia;
+import una.ac.cr.backend.entities.Matricula;
 import una.ac.cr.backend.entities.Persona;
+import una.ac.cr.backend.repositories.MateriaRepository;
 import una.ac.cr.backend.repositories.PersonaRepository;
 
 import java.math.BigInteger;
@@ -23,6 +26,8 @@ public class PersonaRest {
                     "No existe la persona indicada",
                     HttpStatus.BAD_REQUEST.value()
             ));
+    @Autowired
+    private MateriaRepository materiaRepository;
     @Autowired
     private PersonaRepository personaRepository;
 
@@ -63,10 +68,17 @@ public class PersonaRest {
     @DeleteMapping("{id}")
     @CrossOrigin(origins = "*", maxAge = 3600)
     public ResponseEntity delete(@PathVariable BigInteger id) {
-        if (!personaRepository.findById(id).isPresent()) {
+        Optional<Persona> optionalPersona = personaRepository.findById(id);
+        if (!optionalPersona.isPresent()) {
             return commonResponseOnNotFound;
         }
-        personaRepository.delete(personaRepository.findById(id).get());
+        Persona persona = optionalPersona.get();
+        for (Matricula matricula : persona.getMatriculas()) {
+            Materia materia = matricula.getMateria();
+            materia.setCupos(materia.getCupos() + 1);
+            materiaRepository.save(materia);
+        }
+        personaRepository.delete(persona);
         return ResponseEntity.ok().build();
     }
 }

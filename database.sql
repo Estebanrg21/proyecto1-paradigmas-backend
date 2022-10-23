@@ -13,7 +13,7 @@ GRANT CREATE ON matricula_paradigmas.* TO 'matricula_admin'@'%';
 CREATE TABLE persona
 (
     id_persona     BIGINT       NOT NULL AUTO_INCREMENT,
-    identificacion VARCHAR(12)  NOT NULL UNIQUE,
+    identificacion VARCHAR(12)  NOT NULL UNIQUE CHECK (identificacion <> ''),
     nombre         VARCHAR(120) NOT NULL,
     PRIMARY KEY (id_persona),
     INDEX (identificacion)
