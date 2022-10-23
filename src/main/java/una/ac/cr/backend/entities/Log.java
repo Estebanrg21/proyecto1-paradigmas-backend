@@ -23,7 +23,7 @@ public class Log {
     }
 
     public Log() {
-        
+
     }
 
     public BigInteger getId() {

@@ -70,18 +70,19 @@ public class MatriculaRest {
         if (oldMatriculaOptional.get().areAttributesTheSame(matricula)) {
             return ResponseEntity.accepted().body(matricula);
         }
-        Object[] matriculateReadiness = getMatriculaReady(oldMatriculaOptional.get(),matricula);
+        Object[] matriculateReadiness = getMatriculaReady(oldMatriculaOptional.get(), matricula);
         if (matriculateReadiness[1] != null) {
             Matricula oldMatricula = oldMatriculaOptional.get();
-            try {
-                Materia oldMateria = oldMatricula.getMateria();
-                oldMateria.setCupos(oldMateria.getCupos() + 1);
-                materiaRepository.save(oldMateria);
-            } catch (Exception e) {
-                matriculateReadiness[0] = "No fue posible actualizar";
-                matriculateReadiness[2] = HttpStatus.INTERNAL_SERVER_ERROR.value();
+            if (!oldMatricula.getMateria().getId().equals(((Materia) matriculateReadiness[1]).getId())) {
+                try {
+                    Materia oldMateria = oldMatricula.getMateria();
+                    oldMateria.setCupos(oldMateria.getCupos() + 1);
+                    materiaRepository.save(oldMateria);
+                } catch (Exception e) {
+                    matriculateReadiness[0] = "No fue posible actualizar";
+                    matriculateReadiness[2] = HttpStatus.INTERNAL_SERVER_ERROR.value();
+                }
             }
-
         }
         return resolveMatriculaResponse(matricula, matriculateReadiness);
     }
